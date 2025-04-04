@@ -1,0 +1,19 @@
+clear variables; close all
+dataRec=load('datalog.log');
+simTime=dataRec(:,1:1);
+motor_pos_cur=dataRec(:,2:32);
+motor_vel_cur=dataRec(:,33:63);
+lFgpsVal=dataRec(:,64:66);
+lFrpyVal=dataRec(:,67:69);
+lF_AngVel=dataRec(:,70:72);
+lF_vel=dataRec(:,73:75);
+lF_acc=dataRec(:,76:78);
+rFgpsVal=dataRec(:,79:81);
+rFrpyVal=dataRec(:,82:84);
+rF_AngVel=dataRec(:,85:87);
+rF_vel=dataRec(:,88:90);
+rF_acc=dataRec(:,91:93);
+lFcontact=dataRec(:,94:97);
+rFcontact=dataRec(:,98:101);
+lFtouch=dataRec(:,102:102);
+rFtouch=dataRec(:,103:103);
