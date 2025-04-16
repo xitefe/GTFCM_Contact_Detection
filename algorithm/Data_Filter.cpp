@@ -10,6 +10,7 @@ DataFilterNormalizer::DataFilterNormalizer() {
 }
 
 void DataFilterNormalizer::initialize() {
+
     // Initialize histories with appropriate size and zeros
     lF_acc_history.clear();
     lF_acc_vertical_history.clear();
@@ -38,11 +39,21 @@ void DataFilterNormalizer::initialize() {
     // Reset previous values
     prev_lF_acc_vertical = {0.0, 0.0, 0.0};
     prev_lF_accz = 0.0;
+    
+    lF_acc_output_history.clear();
+    for (int i = 0; i < 3*order; i++) {
+        lF_acc_output_history.push_back({0.0, 0.0, 0.0});
+    }
 }
 
 void DataFilterNormalizer::reset() {
     initialize();
 }
+
+/* Design Butterworth low-pass filter coefficients
+    * This is a simplified implementation based on common filter coefficients
+    * For a more accurate implementation, additional digital filter design libraries may be needed
+    */
 
 void DataFilterNormalizer::designButterLowPass() {
     // Design 2nd-order Butterworth low-pass filter
@@ -68,6 +79,10 @@ void DataFilterNormalizer::designButterLowPass() {
     a = {1.0, a1, a2};  // a0 is assumed to be 1
 }
 
+/*  Apply median filter to a value using history
+    * This function applies a median filter to the input value using the history of previous values
+    * The history is maintained as a deque for efficient insertion and removal
+    */
 double DataFilterNormalizer::applyMedianFilter(double value, std::deque<double>& history) {
     // Add new value to history
     history.push_back(value);
@@ -101,7 +116,7 @@ std::array<double, 3> DataFilterNormalizer::applyButterworthFilter(
     std::array<double, 3> output = {0.0, 0.0, 0.0};
     
     if (history.size() >= 3) {  // Need at least 3 samples for 2nd order filter
-        for (int axis = 0; axis < 3; axis++) {
+        for (int axis = 0; axis < 3; axis++) { 
             // Apply filter formula: y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
             size_t h_size = history.size();
             
@@ -113,8 +128,9 @@ std::array<double, 3> DataFilterNormalizer::applyButterworthFilter(
             // Previous output components
             // For simplicity, we're getting these from the history directly
             // In a more advanced implementation, we would maintain separate output history
-            double y1 = (h_size >= 4) ? history[h_size-3][axis] : 0.0;
-            double y2 = (h_size >= 5) ? history[h_size-4][axis] : 0.0;
+            // 前一个输出分量 - 使用输出历史而非输入历史
+            double y1 = lF_acc_output_history[lF_acc_output_history.size()-1][axis];
+            double y2 = lF_acc_output_history[lF_acc_output_history.size()-2][axis];
             
             // Calculate output
             output[axis] = b[0]*x0 + b[1]*x1 + b[2]*x2 - a[1]*y1 - a[2]*y2;
@@ -123,7 +139,11 @@ std::array<double, 3> DataFilterNormalizer::applyButterworthFilter(
         // Not enough history, return the input
         output = input;
     }
-    
+    // 保存输出到历史
+    lF_acc_output_history.push_back(output);
+    if (lF_acc_output_history.size() > 3*order) {
+        lF_acc_output_history.pop_front();
+    }
     return output;
 }
 
@@ -134,13 +154,12 @@ double DataFilterNormalizer::normalizeWithSign(double value, double max_value) {
     }
     
     // Sign-preserving normalization
-    return (max_value > 0.0) ? value / max_value : 0.0;
+    return (value / max_value);
 }
 
-std::array<double, 5> DataFilterNormalizer::processData(
+std::vector<double> DataFilterNormalizer::processData(
     const std::array<double, 3>& lF_acc,
-    const std::array<double, 2>& lF_rpy,
-    const std::array<double, 2>& rF_rpy,
+    const std::array<double, 3>& lF_rpy,
     double lF_vel_z,
     double hip_joint_pos,
     double knee_joint_pos) {
@@ -150,13 +169,15 @@ std::array<double, 5> DataFilterNormalizer::processData(
         std::min(std::max(lF_acc[0], -acc_threshold), acc_threshold),
         std::min(std::max(lF_acc[1], -acc_threshold), acc_threshold),
         std::min(std::max(lF_acc[2], -acc_threshold), acc_threshold)
-    };
-    
+    }; 
     
     // Step 2: Apply median filter
     // For simplicity, we'll only apply median filter to z-component
     // In a more comprehensive implementation, we would apply to all axes
-    lF_acc_thresholded[2] = applyMedianFilter(lF_acc_thresholded[2], lF_acc_vertical_history);
+    // lF_acc_thresholded[0] = applyMedianFilter(lF_acc_thresholded[0], lF_acc_x_history);
+    // lF_acc_thresholded[1] = applyMedianFilter(lF_acc_thresholded[1], lF_acc_y_history);
+    // lF_acc_thresholded[2] = applyMedianFilter(lF_acc_thresholded[2], lF_acc_z_history);
+
     
     // Step 3: Apply Butterworth low-pass filter
     lF_acc_filtered = applyButterworthFilter(lF_acc_thresholded, lF_acc_history);
@@ -219,7 +240,7 @@ std::array<double, 5> DataFilterNormalizer::processData(
     if (hip_joint_pos_history.size() > window_size) hip_joint_pos_history.pop_front();
     if (knee_joint_pos_history.size() > window_size) knee_joint_pos_history.pop_front();
     
-    // Step 6: Update max values for normalization
+    //Step 6: Update max values for normalization
     if (std::abs(lF_acc_world[2]) > max_lF_acc_vertical) {
         max_lF_acc_vertical = std::abs(lF_acc_world[2]);
     }
@@ -247,12 +268,21 @@ std::array<double, 5> DataFilterNormalizer::processData(
     double knee_joint_normalized = normalizeWithSign(knee_joint_pos, max_knee_joint_pos);
     double lF_accz_diff_normalized = normalizeWithSign(lF_accz_diff, max_lF_accz_diff);
     
-    // Return the five normalized values
+    //Return the five normalized values
     return {
         lF_accz_normalized,
         lF_velz_normalized,
         hip_joint_normalized,
         knee_joint_normalized,
-        lF_accz_diff_normalized
+        lF_accz_diff_normalized,
     };
+    // debug
+    // return {
+    //     lF_acc_filtered[0],
+    //     lF_acc_filtered[1],
+    //     lF_acc_filtered[2],
+    //     lF_accz_diff,
+    //     lF_acc_world[1],
+    //     lF_acc_world[2]
+    // };
 }

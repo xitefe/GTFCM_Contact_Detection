@@ -21,6 +21,69 @@ Feel free to use in any purpose, and cite OpenLoong-Dynamics-Control in any styl
 #include "joystick_interpreter.h"
 #include <string>
 #include <iostream>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <sys/resource.h>
+
+// 定义与主进程相同的共享内存结构
+struct SharedRobotData {
+    double simTime;
+    double lF_acc[3];
+    double lF_rpy[3];
+    double lF_vel_z;
+    double hip_joint_pos;
+    double knee_joint_pos;
+    double Contactforce;
+    // ...其他需要的数据
+    int dataReady;  // 数据就绪标志
+};
+// 创建共享内存的函数
+SharedRobotData* setupSharedMemory() {
+    // 确保键值文件存在
+    FILE* fp = fopen("/tmp/openloong_shm_key", "w");
+    if (fp) fclose(fp);
+    // 创建共享内存
+    key_t key = ftok("/tmp/openloong_shm_key", 'R');
+    if (key == -1) {
+        perror("ftok failed");
+        return nullptr;
+    }
+    
+    size_t shm_size = sizeof(SharedRobotData);
+    std::cout << "共享内存大小: " << shm_size << " 字节" << std::endl;
+    std::cout << "共享内存键值: " << key << std::endl;
+
+    int shmid = shmget(key, shm_size, IPC_CREAT | IPC_EXCL | 0666);
+    if (shmid < 0) {
+        if (errno == EEXIST) {
+            // 共享内存已存在，尝试获取它
+            shmid = shmget(key, shm_size, 0666);
+            if (shmid < 0) {
+                perror("shmget (existing) failed");
+                return nullptr;
+            }
+            std::cout << "使用现有共享内存段: " << shmid << std::endl;
+        } else {
+            perror("shmget failed");
+            std::cout << "错误号: " << errno << std::endl;
+            return nullptr;
+        }
+    } else {
+        std::cout << "创建新共享内存段: " << shmid << std::endl;
+    }
+    
+    // 附加共享内存
+    SharedRobotData* data = (SharedRobotData*)shmat(shmid, NULL, 0);
+    if (data == (void*)-1) {
+        perror("shmat failed");
+        return nullptr;
+    }
+    // 初始化数据
+    memset(data, 0, shm_size);
+    // 初始化数据
+    data->dataReady = 0;
+    return data;
+}
 
 const   double  dt = 0.001;
 const   double  dt_200Hz = 0.005;
@@ -30,6 +93,11 @@ mjModel* mj_model = mj_loadXML("../models/scene_board.xml", 0, error, 1000);
 mjData* mj_data = mj_makeData(mj_model);
 
 int main(int argc, char **argv) {
+    
+    // 在main()函数内创建共享内存
+    SharedRobotData* sharedData;
+    sharedData = setupSharedMemory();
+
     // initialize classes
     UIctr uiController(mj_model,mj_data);   // UI control for Mujoco
     MJ_Interface mj_interface(mj_model, mj_data); // data interface for Mujoco
@@ -51,7 +119,7 @@ int main(int argc, char **argv) {
     // initialize variables
     double stand_legLength = 1.01;//0.97;// desired baselink height
     double foot_height =0.07; // distance between the foot ankel joint and the bottom
-    double xv_des = 1.2;  // desired velocity in x direction
+    double xv_des = -0.4;  // desired velocity in x direction
 	int model_nv=kinDynSolver.model_nv;
 
     RobotState.width_hips = 0.229;
@@ -281,6 +349,24 @@ int main(int argc, char **argv) {
             logger.recItermData("rFtouch", RobotState.fRtouch);
             
 			logger.finishLine();
+
+            // Sharememory update
+            if (sharedData) {
+                sharedData->simTime = simTime;
+                sharedData->lF_acc[0] = RobotState.fLAcc[0];
+                sharedData->lF_acc[1] = RobotState.fLAcc[1];
+                sharedData->lF_acc[2] = RobotState.fLAcc[2];
+                sharedData->lF_rpy[0] = RobotState.fLrpy[0];
+                sharedData->lF_rpy[1] = RobotState.fLrpy[1];
+                sharedData->lF_rpy[2] = RobotState.fLrpy[2];
+                sharedData->lF_vel_z = RobotState.fLLinVel[2];
+                sharedData->hip_joint_pos = RobotState.q(7);
+                sharedData->knee_joint_pos = RobotState.q(18);
+                sharedData->Contactforce = RobotState.fLtouch;
+                // // ...其他需要共享的数据
+                sharedData->dataReady = 1;  // 标记数据已就绪
+            }
+
         }
 
         if (mj_data->time>=simEndTime)

@@ -1,0 +1,6 @@
+evaluateMyFIS_initialize.obj
+evaluateMyFIS_terminate.obj
+evaluateMyFIS.obj
+trimf.obj
+evaluateAndMethod.obj
+centroid.obj

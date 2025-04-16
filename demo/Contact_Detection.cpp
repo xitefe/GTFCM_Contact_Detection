@@ -1,6 +1,6 @@
 #include <iostream>
 #include "GT2FIS_Contact.h"
-
+#include "Data_Filter.h"
 #include <thread>
 #include <chrono>
 #include <sys/shm.h>
@@ -9,18 +9,23 @@
 #include <csignal>
 #include <unistd.h>
 
+#include "foxglove/websocket/base64.hpp"
+#include "foxglove/websocket/server_factory.hpp"
+#include "foxglove/websocket/websocket_notls.hpp"
+#include "foxglove/websocket/websocket_server.hpp"
+#include <nlohmann/json.hpp>
+
+#include "evaluateMyFIS.h"
+
 // 定义与主进程相同的共享内存结构
 struct SharedRobotData {
     double simTime;
-    std::vector<double> basePos;
-    std::vector<double> rpy;
-    double motors_pos_cur;
-    double motors_vel_cur;
-    std::vector<double> fLPos;  // 左脚位置
-    std::vector<double> fLrpy;  // 左脚姿态
-    std::vector<double> fLAngVel;  // 左脚角速度
-    std::vector<double> fLLinVel;  // 左脚线速度
-    std::vector<double> fLAcc;     // 左脚加速度
+    double lF_acc[3];
+    double lF_rpy[3];
+    double lF_vel_z;
+    double hip_joint_pos;
+    double knee_joint_pos;
+    double Contactforce;
     // ...其他需要的数据
     int dataReady;  // 数据就绪标志
 };
@@ -36,7 +41,16 @@ void signalHandler(int signum) {
 
 // 连接到共享内存
 SharedRobotData* connectToSharedMemory() {
-    key_t key = ftok("/tmp", 'R');
+    // 确保键值文件存在
+    FILE* fp = fopen("/tmp/openloong_shm_key", "w");
+    if (fp) fclose(fp);
+    
+    // 修改此行，使用与发送端相同的参数
+    key_t key = ftok("/tmp/openloong_shm_key", 'R');
+    
+    // 打印键值进行调试
+    std::cout << "使用共享内存键值: " << key << std::endl;
+    
     int shmid = shmget(key, sizeof(SharedRobotData), 0666);
     if (shmid < 0) {
         perror("shmget failed, 请确保主程序已启动");
@@ -51,6 +65,14 @@ SharedRobotData* connectToSharedMemory() {
     
     return data;
 }
+
+
+//Set the websocket comuunication time epoch
+static uint64_t nanosecondsSinceEpoch() {
+    return uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                      std::chrono::system_clock::now().time_since_epoch())
+                      .count());
+  }
 
 
 int main() {
@@ -186,13 +208,101 @@ int main() {
     };
 
     // Example dimensions
-    const int numRules = R_matrix.size();    // Number of rules (r)
-    const int inputDim = R_matrix[0].size()-1;;    // Input dimension (d)
+    const int numRules = R_matrix[0].size();    // Number of rules (r)
+    const int inputDim = R_matrix[0][0].size()-1;    // Input dimension (d)
     const int outputDim = 1;   // Output dimension (always 1)
-    const int numMF = R_matrix[0][0].size();       // Number of membership functions (q)
+    const int numMF = R_matrix.size();       // Number of membership functions (q)
 
+    /*************** websocket server begin *************/
+    const auto logHandler = [](foxglove::WebSocketLogLevel, char const* msg) {
+        std::cout << "WebSocket: " << msg << std::endl;
+      };
+      foxglove::ServerOptions serverOptions;
+      auto server = foxglove::ServerFactory::createServer<websocketpp::connection_hdl>(
+        "OpenLoong Contact Detection Server", logHandler, serverOptions);
 
+    foxglove::ServerHandlers<foxglove::ConnHandle> hdlrs;
+    hdlrs.subscribeHandler = [&](foxglove::ChannelId chanId, foxglove::ConnHandle clientHandle) {
+        const auto clientStr = server->remoteEndpointString(clientHandle);
+        std::cout << "Client " << clientStr << " subscribed to " << chanId << std::endl;
+    };
+    hdlrs.unsubscribeHandler = [&](foxglove::ChannelId chanId, foxglove::ConnHandle clientHandle) {
+        const auto clientStr = server->remoteEndpointString(clientHandle);
+        std::cout << "Client " << clientStr << " unsubscribed from " << chanId << std::endl;
+    };
 
+    server->setHandlers(std::move(hdlrs));
+    server->start("0.0.0.0", 8765);
+
+    const auto channelIds = server->addChannels({
+        {
+          .topic = "contact_state",
+          .encoding = "json",
+          .schemaName = "ContactState",
+          .schema = nlohmann::json{
+            {"type", "object"},
+            {"properties", {
+              {"timestamp", {{"type", "number"}}},
+              {"is_contact", {{"type", "boolean"}}},
+              {"probability", {{"type", "number"}}},
+              {"contact_truth", {{"type", "boolean"}}}
+            }}
+          }.dump(),
+        },
+        {
+          .topic = "input_data",
+          .encoding = "json",
+          .schemaName = "InputData",
+          .schema = nlohmann::json{
+            {"type", "object"},
+            {"properties", {
+              {"timestamp", {{"type", "number"}}},           
+              {"lF_accz_normalized", {{"type", "number"}}},
+              {"lF_velz_normalized", {{"type", "number"}}},
+              {"hip_joint_normalized", {{"type", "number"}}},
+              {"knee_joint_normalized", {{"type", "number"}}},
+              {"lF_accz_diff_normalized", {{"type", "number"}}},
+            }}
+          }.dump(),
+        },
+        {
+          .topic = "sensor_data",
+          .encoding = "json",
+          .schemaName = "SensorData",
+          .schema = nlohmann::json{
+            {"type", "object"},
+            {"properties", {
+              {"timestamp", {{"type", "number"}}},
+              {"acc_x", {{"type", "number"}}},
+              {"acc_y", {{"type", "number"}}},
+              {"acc_z", {{"type", "number"}}},
+              {"rpy_x", {{"type", "number"}}},
+              {"rpy_y", {{"type", "number"}}},
+              {"rpy_z", {{"type", "number"}}},
+              {"vel_z", {{"type", "number"}}},
+              {"hip_joint_pos", {{"type", "number"}}},
+              {"knee_joint_pos", {{"type", "number"}}},
+            }}
+          }.dump(),
+        },
+        {
+          .topic = "debug_data",
+          .encoding = "json",
+          .schemaName = "DebugData",
+            .schema = nlohmann::json{
+                {"type", "object"},
+                {"properties", {
+                {"DebugData1", {{"type", "number"}}},
+                {"DebugData2", {{"type", "number"}}},
+                {"DebugData3", {{"type", "number"}}},
+                {"DebugData4", {{"type", "number"}}},
+                {"DebugData5", {{"type", "number"}}},
+                {"DebugData6", {{"type", "number"}}},
+                }}
+            }.dump(),  
+        }
+      });
+    /**************** websocket server end *************/
     // 设置信号处理
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
@@ -211,10 +321,10 @@ int main() {
 
     // Initialize rule base matrix (r x (d+1) x q)
     std::vector<std::vector<std::vector<double>>> ruleBase(
-        numRules, 
+        numMF, 
         std::vector<std::vector<double>>(
-            inputDim + outputDim, 
-            std::vector<double>(numMF, 0.0)
+            numRules, 
+            std::vector<double>(inputDim + outputDim, 0.0)
         )
     );
     
@@ -231,44 +341,125 @@ int main() {
     
     // Create GT2FCM instance
     GT2FCM fuzzyModel(ruleBase, uncertaintyWeights, numRules, inputDim, numMF);
-    
-
+    // Create DataFilterNormalizer instance
+    DataFilterNormalizer dataFilter;
+    // Initialize data filter with example parameters
+    std::vector<double> inputData(inputDim, 0.0);
+    std::vector<double> debugData(6, 0.0);
+    // 转换C风格数组到std::array
+    std::array<double, 3> lF_acc_array;
+    std::array<double, 3> lF_rpy_array;
+    uint8_t beta_low = 10;   // 低值区域的压缩系数（较小）
+    uint8_t beta_high = 12; // 高值区域的压缩系数（较大）
+    bool b_output; // Example output flag
+    bool b_contact_truth;
     while(running)
     {
+        // 手动复制数据
+        for (int i = 0; i < 3; i++) {
+            lF_acc_array[i] = robotData->lF_acc[i];
+            lF_rpy_array[i] = robotData->lF_rpy[i];
+        }
         if (robotData->dataReady) {
-            
-            // 这里实现您的算法
-
+            // 实现数据滤波和归一化
+            //debugData = dataFilter.processData(lF_acc_array, lF_rpy_array, robotData->lF_vel_z, robotData->hip_joint_pos, robotData->knee_joint_pos);
+            inputData = dataFilter.processData(lF_acc_array, lF_rpy_array, robotData->lF_vel_z, robotData->hip_joint_pos, robotData->knee_joint_pos);
             
         }
-        // Example input data
-        std::vector<double> inputData = {0.2, 0.3, 0.4, 0.5, 0.6};
-    
         // Calculate output
         double output = fuzzyModel.calculate(inputData);
 
-        u_int8_t beta = 4; // Example beta value for error checking
-        bool b_output; // Example output flag
         // Check for errors
-        output = 0.5 + 0.5 * tanh(beta * (output - 0.5));
-
-        // Convert output to binary with threshold
-        if (output > 0.7){
+        //output = 0.5 + 0.5 * tanh(beta * (output - 0.5));
+        if (output < 0.65) {
+            // 对低值区域使用较小的beta
+            output = 0.5 + 0.5 * tanh(beta_low * (output - 0.65));
+        } else {
+            // 对高值区域使用较大的beta
+            output = 0.5 + 0.5 * tanh(beta_high * (output - 0.65));
+        }
+        // Convert output to binary with thresholdlF_rpy
+        if (output > 0.75){
             b_output = 1;
         }
         else{
             b_output = 0;
         }
-        // Display result
-        std::cout << "Input: [";
-        for (size_t i = 0; i < inputData.size(); i++) {
-            std::cout << inputData[i];
-            if (i < inputData.size() - 1) std::cout << ", ";
+
+        if (robotData->Contactforce >= 5){
+            b_contact_truth = 1;
         }
-        std::cout << "]" << std::endl;
-    
-        std::cout << "Predicted output: " << output << std::endl;
+        else{
+            b_contact_truth = 0;
+        }
+        // 区间二型模糊推理系统
+        
+
+        // 创建并发布传感器数据消息
+        nlohmann::json sensorMsg = {
+            {"timestamp", robotData->simTime},
+            {"acc_x", robotData->lF_acc[0]},
+            {"acc_y", robotData->lF_acc[1]},
+            {"acc_z", robotData->lF_acc[2]},
+            {"rpy_x", robotData->lF_rpy[0]},
+            {"rpy_y", robotData->lF_rpy[1]},
+            {"rpy_z", robotData->lF_rpy[2]},
+            {"vel_z", robotData->lF_vel_z},
+            {"hip_joint_pos", robotData->hip_joint_pos},
+            {"knee_joint_pos", robotData->knee_joint_pos}
+        };
+        nlohmann::json contactMsg = {
+            {"timestamp", robotData->simTime},
+            {"is_contact", b_output},
+            {"probability", output},
+            {"contact_truth", b_contact_truth}
+        };
+        nlohmann::json inputMsg = {
+            {"timestamp", robotData->simTime},
+            {"lF_accz_normalized", inputData[0]},
+            {"lF_velz_normalized", inputData[1]},
+            {"hip_joint_normalized", inputData[2]},
+            {"knee_joint_normalized", inputData[3]},
+            {"lF_accz_diff_normalized", inputData[4]}
+        };
+        nlohmann::json debugMsg = {
+            {"timestamp", robotData->simTime},
+            {"DebugData1", debugData[0]},
+            {"DebugData2", debugData[1]},
+            {"DebugData3", debugData[2]},
+            {"DebugData4", debugData[3]},
+            {"DebugData5", debugData[4]},
+            {"DebugData6", debugData[5]}
+        };
+
+
+
+        // 获取当前时间戳
+        const auto now = nanosecondsSinceEpoch();
+
+        // 发布传感器数据
+        std::string contactStr = contactMsg.dump();
+        server->broadcastMessage(channelIds[0], now, 
+                                reinterpret_cast<const uint8_t*>(contactStr.data()),
+                                contactStr.size());
+        std::string sensorStr = sensorMsg.dump();
+        server->broadcastMessage(channelIds[2], now, 
+                                reinterpret_cast<const uint8_t*>(sensorStr.data()),
+                                sensorStr.size());
+        std::string inputStr = inputMsg.dump();
+        server->broadcastMessage(channelIds[1], now,
+                                reinterpret_cast<const uint8_t*>(inputStr.data()),
+                                inputStr.size()); 
+        std::string debugStr = debugMsg.dump();
+        server->broadcastMessage(channelIds[3], now,
+                                reinterpret_cast<const uint8_t*>(debugStr.data()),
+                                debugStr.size());        
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+
+    server->removeChannels(channelIds);
+    server->stop();
     
     // 分离共享内存
     shmdt(robotData);

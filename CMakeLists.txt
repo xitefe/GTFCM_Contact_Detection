@@ -30,6 +30,7 @@ include_directories("algorithm")
 include_directories("common")
 include_directories("math")
 include_directories("sim_interface")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/codegen/include)
 
 message(${CMAKE_SYSTEM_PROCESSOR})
 if(${CMAKE_CXX_COMPILER} MATCHES "aarch64" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
@@ -37,6 +38,15 @@ if(${CMAKE_CXX_COMPILER} MATCHES "aarch64" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES 
 else()
 	list(APPEND allLib "third_party/mujoco/lin_x64")
 endif()
+
+set(foxglove "third_party/foxglove-websocket")
+#list(APPEND allDir ${foxglove})
+#list(APPEND allInc ${foxglove}/include/foxglove/websocket)
+add_subdirectory(${foxglove})
+
+set(IT2FIS "third_party/codegen/lib/evaluateMyFIS")
+add_subdirectory(${IT2FIS})
+
 link_directories(${allLib})
 
 file(GLOB C_SOURCES *.c)
@@ -99,3 +109,15 @@ target_link_libraries(walk_mpc_wbc_joystick core mujoco ${sysSimLibs} dl)
 
 add_executable(walk_wbc_staircase demo/walk_wbc_staircase.cpp)
 target_link_libraries(walk_wbc_staircase core mujoco ${sysSimLibs} dl)
+
+add_executable(Contact_detection demo/Contact_Detection.cpp)
+find_package(OpenSSL REQUIRED)
+find_package(ZLIB REQUIRED)
+target_link_libraries(Contact_detection core mujoco foxglove_websocket evaluateMyFIS OpenSSL::SSL OpenSSL::Crypto ZLIB::ZLIB ${sysSimLibs} dl)
+
+target_include_directories(Contact_detection
+	PUBLIC include
+	SYSTEM
+	${foxglove}/include/foxglove/websocket
+	${IT2FIS}/third_party/codegen/lib/evaluateMyFIS
+)

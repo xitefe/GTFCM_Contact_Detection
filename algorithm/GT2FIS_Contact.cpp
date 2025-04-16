@@ -58,7 +58,7 @@ void GT2FCM::computeUNR() {
             double denominator = 0.0;
             
             for (int m = 0; m < q; m++) {
-                numerator += SM[i][m] * R[i][j][m];
+                numerator += SM[i][m] * R[m][i][j];
                 denominator += SM[i][m];
             }
             
@@ -143,6 +143,7 @@ std::vector<double> GT2FCM::normalizeMembers(const std::vector<double>& mu) {
 
 // Calculate output for given input data
 double GT2FCM::calculate(const std::vector<double>& inputData) {
+
     // Compute distances between input vector and UNRin rows
     std::vector<double> distances = computeDistance(inputData);
     
