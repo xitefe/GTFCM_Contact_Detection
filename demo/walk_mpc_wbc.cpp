@@ -28,9 +28,11 @@ Feel free to use in any purpose, and cite OpenLoong-Dynamics-Control in any styl
 // 定义与主进程相同的共享内存结构
 struct SharedRobotData {
     double simTime;
+    double lF_pos[3];
     double lF_acc[3];
     double lF_rpy[3];
-    double lF_vel_z;
+    double lF_angular_vel[3];
+    double lF_linear_vel[3];
     double hip_joint_pos;
     double knee_joint_pos;
     double Contactforce;
@@ -48,6 +50,17 @@ SharedRobotData* setupSharedMemory() {
         perror("ftok failed");
         return nullptr;
     }
+
+    // // 检查是否存在旧的共享内存段，如果存在则移除
+    // int existing_shmid = shmget(key, 0, 0666);
+    // if (existing_shmid >= 0) {
+    //     std::cout << "发现已存在的共享内存段，正在移除..." << std::endl;
+    //     if (shmctl(existing_shmid, IPC_RMID, NULL) == -1) {
+    //         perror("移除共享内存段失败");
+    //     } else {
+    //         std::cout << "已成功移除旧共享内存段" << std::endl;
+    //     }
+    // }
     
     size_t shm_size = sizeof(SharedRobotData);
     std::cout << "共享内存大小: " << shm_size << " 字节" << std::endl;
@@ -89,7 +102,7 @@ const   double  dt = 0.001;
 const   double  dt_200Hz = 0.005;
 // MuJoCo load and compile model
 char error[1000] = "Could not load binary model";
-mjModel* mj_model = mj_loadXML("../models/scene_board.xml", 0, error, 1000);
+mjModel* mj_model = mj_loadXML("../models/scene.xml", 0, error, 1000);
 mjData* mj_data = mj_makeData(mj_model);
 
 int main(int argc, char **argv) {
@@ -119,7 +132,7 @@ int main(int argc, char **argv) {
     // initialize variables
     double stand_legLength = 1.01;//0.97;// desired baselink height
     double foot_height =0.07; // distance between the foot ankel joint and the bottom
-    double xv_des = -0.4;  // desired velocity in x direction
+    double xv_des = 0.8;  // desired velocity in x direction
 	int model_nv=kinDynSolver.model_nv;
 
     RobotState.width_hips = 0.229;
@@ -270,12 +283,12 @@ int main(int argc, char **argv) {
                 Eigen::Matrix<double, 1, nx>  L_diag;
                 Eigen::Matrix<double, 1, nu>  K_diag;
                 L_diag <<
-                       1.0, 1.0, 1.0,//eul
+                        1.0, 1.0, 1.0,//eul
                         1.0, 200.0,  1.0,//pCoM
                         1e-7, 1e-7, 1e-7,//w
                         100.0, 10.0, 1.0;//vCoM
                 K_diag <<
-                       1.0, 1.0, 1.0,//fl
+                        1.0, 1.0, 1.0,//fl
                         1.0, 1.0, 1.0,
                         1.0, 1.0, 1.0,//fr
                         1.0, 1.0, 1.0,1.0;
@@ -353,13 +366,21 @@ int main(int argc, char **argv) {
             // Sharememory update
             if (sharedData) {
                 sharedData->simTime = simTime;
+                sharedData->lF_pos[0] = RobotState.fLPos[0];
+                sharedData->lF_pos[1] = RobotState.fLPos[1];
+                sharedData->lF_pos[2] = RobotState.fLPos[2];
                 sharedData->lF_acc[0] = RobotState.fLAcc[0];
                 sharedData->lF_acc[1] = RobotState.fLAcc[1];
                 sharedData->lF_acc[2] = RobotState.fLAcc[2];
                 sharedData->lF_rpy[0] = RobotState.fLrpy[0];
                 sharedData->lF_rpy[1] = RobotState.fLrpy[1];
                 sharedData->lF_rpy[2] = RobotState.fLrpy[2];
-                sharedData->lF_vel_z = RobotState.fLLinVel[2];
+                sharedData->lF_angular_vel[0] = RobotState.fLAngVel[0];
+                sharedData->lF_angular_vel[1] = RobotState.fLAngVel[1];
+                sharedData->lF_angular_vel[2] = RobotState.fLAngVel[2];
+                sharedData->lF_linear_vel[0] = RobotState.fLLinVel[0];
+                sharedData->lF_linear_vel[1] = RobotState.fLLinVel[1];
+                sharedData->lF_linear_vel[2] = RobotState.fLLinVel[2];
                 sharedData->hip_joint_pos = RobotState.q(7);
                 sharedData->knee_joint_pos = RobotState.q(18);
                 sharedData->Contactforce = RobotState.fLtouch;

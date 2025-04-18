@@ -16,13 +16,16 @@
 #include <nlohmann/json.hpp>
 
 #include "evaluateMyFIS.h"
+#include "IT2FIS_Stable_Contact.h"
 
 // 定义与主进程相同的共享内存结构
 struct SharedRobotData {
     double simTime;
+    double lF_pos[3];
     double lF_acc[3];
     double lF_rpy[3];
-    double lF_vel_z;
+    double lF_angular_vel[3];
+    double lF_linear_vel[3];
     double hip_joint_pos;
     double knee_joint_pos;
     double Contactforce;
@@ -349,21 +352,32 @@ int main() {
     // 转换C风格数组到std::array
     std::array<double, 3> lF_acc_array;
     std::array<double, 3> lF_rpy_array;
+    std::array<double, 3> lF_pos_array;
+    std::array<double, 3> lF_angular_vel_array;
+    std::array<double, 3> lF_linear_vel_array;
     uint8_t beta_low = 10;   // 低值区域的压缩系数（较小）
     uint8_t beta_high = 12; // 高值区域的压缩系数（较大）
     bool b_output; // Example output flag
     bool b_contact_truth;
+
+    // IT2FIS推理初始化
+    size_t window_size = 10;
+    StableContactDetector it2fis(window_size);
+
     while(running)
     {
         // 手动复制数据
         for (int i = 0; i < 3; i++) {
             lF_acc_array[i] = robotData->lF_acc[i];
             lF_rpy_array[i] = robotData->lF_rpy[i];
+            lF_pos_array[i] = robotData->lF_pos[i];
+            lF_angular_vel_array[i] = robotData->lF_angular_vel[i];
+            lF_linear_vel_array[i] = robotData->lF_linear_vel[i];
         }
         if (robotData->dataReady) {
             // 实现数据滤波和归一化
             //debugData = dataFilter.processData(lF_acc_array, lF_rpy_array, robotData->lF_vel_z, robotData->hip_joint_pos, robotData->knee_joint_pos);
-            inputData = dataFilter.processData(lF_acc_array, lF_rpy_array, robotData->lF_vel_z, robotData->hip_joint_pos, robotData->knee_joint_pos);
+            inputData = dataFilter.processData(lF_acc_array, lF_rpy_array, lF_linear_vel_array[2], robotData->hip_joint_pos, robotData->knee_joint_pos);
             
         }
         // Calculate output
@@ -393,7 +407,45 @@ int main() {
             b_contact_truth = 0;
         }
         // 区间二型模糊推理系统
+        // 添加到稳态接触检测器
+        it2fis.addFrame(b_output, lF_pos_array, lF_linear_vel_array, lF_angular_vel_array, output);
+
+        // 计算世界坐标系下的速度
+        std::array<double, 3> world_vel = it2fis.transformToWorldFrame(lF_linear_vel_array, lF_rpy_array);
+        std::array<double, 3> world_ang_vel = it2fis.transformToWorldFrame(lF_angular_vel_array, lF_rpy_array);
+
+        //计算世界坐标系下的绝对速度
+        // std::array<double, 3> world_truth_velocity = it2fis.calculateWorldTruthVelocity(lF_pos_array);
+    
+        // 计算水平位移
+        double h_displacement = 0;
+        if (b_output)
+            h_displacement = it2fis.calculateHorizontalDisplacement();
+    
+        // 计算水平速度大小
+        double h_velocity = sqrt(world_vel[0]*world_vel[0] + world_vel[1]*world_vel[1]);
+    
+        // 计算角速度大小
+        double ang_velocity = sqrt(world_ang_vel[0]*world_ang_vel[0] + 
+                                world_ang_vel[1]*world_ang_vel[1] + 
+                                world_ang_vel[2]*world_ang_vel[2]);
         
+
+        // 归一化
+        double h_disp_norm = std::min(h_displacement / 0.03, 1.0);
+        double h_vel_norm = std::min(h_velocity / 1.0, 1.0);
+        double ang_vel_norm = std::min(ang_velocity / 10.0, 1.0);
+
+        //it2fis
+        double it2fis_input[4] = {output, h_disp_norm, h_vel_norm, ang_vel_norm};
+        double stable_contact_probability = evaluateMyFIS(it2fis_input);
+
+        debugData[0] = stable_contact_probability;
+        debugData[1] = ang_velocity;
+        debugData[2] = h_displacement;
+        debugData[3] = h_vel_norm;
+        debugData[4] = ang_vel_norm;
+        debugData[5] = h_disp_norm;
 
         // 创建并发布传感器数据消息
         nlohmann::json sensorMsg = {
@@ -404,7 +456,7 @@ int main() {
             {"rpy_x", robotData->lF_rpy[0]},
             {"rpy_y", robotData->lF_rpy[1]},
             {"rpy_z", robotData->lF_rpy[2]},
-            {"vel_z", robotData->lF_vel_z},
+            {"vel_z", robotData->lF_linear_vel[2]},
             {"hip_joint_pos", robotData->hip_joint_pos},
             {"knee_joint_pos", robotData->knee_joint_pos}
         };
