@@ -268,41 +268,66 @@ int main() {
             }}
           }.dump(),
         },
+        // {
+        //   .topic = "sensor_data",
+        //   .encoding = "json",
+        //   .schemaName = "SensorData",
+        //   .schema = nlohmann::json{
+        //     {"type", "object"},
+        //     {"properties", {
+        //       {"timestamp", {{"type", "number"}}},
+        //       {"acc_x", {{"type", "number"}}},
+        //       {"acc_y", {{"type", "number"}}},
+        //       {"acc_z", {{"type", "number"}}},
+        //       {"rpy_x", {{"type", "number"}}},
+        //       {"rpy_y", {{"type", "number"}}},
+        //       {"rpy_z", {{"type", "number"}}},
+        //       {"vel_z", {{"type", "number"}}},
+        //       {"hip_joint_pos", {{"type", "number"}}},
+        //       {"knee_joint_pos", {{"type", "number"}}},
+        //     }}
+        //   }.dump(),
+        // },
+        // {
+        //   .topic = "debug_data",
+        //   .encoding = "json",
+        //   .schemaName = "DebugData",
+        //     .schema = nlohmann::json{
+        //         {"type", "object"},
+        //         {"properties", {
+        //         {"DebugData1", {{"type", "number"}}},
+        //         {"DebugData2", {{"type", "number"}}},
+        //         {"DebugData3", {{"type", "number"}}},
+        //         {"DebugData4", {{"type", "number"}}},
+        //         {"DebugData5", {{"type", "number"}}},
+        //         {"DebugData6", {{"type", "number"}}},
+        //         }}
+        //     }.dump(),  
+        // }
         {
-          .topic = "sensor_data",
-          .encoding = "json",
-          .schemaName = "SensorData",
-          .schema = nlohmann::json{
-            {"type", "object"},
-            {"properties", {
-              {"timestamp", {{"type", "number"}}},
-              {"acc_x", {{"type", "number"}}},
-              {"acc_y", {{"type", "number"}}},
-              {"acc_z", {{"type", "number"}}},
-              {"rpy_x", {{"type", "number"}}},
-              {"rpy_y", {{"type", "number"}}},
-              {"rpy_z", {{"type", "number"}}},
-              {"vel_z", {{"type", "number"}}},
-              {"hip_joint_pos", {{"type", "number"}}},
-              {"knee_joint_pos", {{"type", "number"}}},
-            }}
-          }.dump(),
-        },
-        {
-          .topic = "debug_data",
-          .encoding = "json",
-          .schemaName = "DebugData",
+            .topic = "stable_contact_data",
+            .encoding = "json",
+            .schemaName = "DebugData",
             .schema = nlohmann::json{
                 {"type", "object"},
                 {"properties", {
-                {"DebugData1", {{"type", "number"}}},
-                {"DebugData2", {{"type", "number"}}},
-                {"DebugData3", {{"type", "number"}}},
-                {"DebugData4", {{"type", "number"}}},
-                {"DebugData5", {{"type", "number"}}},
-                {"DebugData6", {{"type", "number"}}},
+                    {"stable_contact_probability", {{"type", "number"}}},
                 }}
-            }.dump(),  
+            }.dump(),
+        },
+        {
+            .topic = "IT2FIS_input_data",
+            .encoding = "json",
+            .schemaName = "IT2FISInputData",
+            .schema = nlohmann::json{
+                {"type", "object"},
+                {"properties", {
+                    {"contact_probability", {{"type", "number"}}},
+                    {"h_disp_norm", {{"type", "number"}}},
+                    {"h_vel_norm", {{"type", "number"}}},
+                    {"ang_vel_norm", {{"type", "number"}}}
+                }}
+            }.dump(),
         }
       });
     /**************** websocket server end *************/
@@ -448,18 +473,18 @@ int main() {
         debugData[5] = ang_vel_norm;
 
         // 创建并发布传感器数据消息
-        nlohmann::json sensorMsg = {
-            {"timestamp", robotData->simTime},
-            {"acc_x", robotData->lF_acc[0]},
-            {"acc_y", robotData->lF_acc[1]},
-            {"acc_z", robotData->lF_acc[2]},
-            {"rpy_x", robotData->lF_rpy[0]},
-            {"rpy_y", robotData->lF_rpy[1]},
-            {"rpy_z", robotData->lF_rpy[2]},
-            {"vel_z", robotData->lF_linear_vel[2]},
-            {"hip_joint_pos", robotData->hip_joint_pos},
-            {"knee_joint_pos", robotData->knee_joint_pos}
-        };
+        // nlohmann::json sensorMsg = {
+        //     {"timestamp", robotData->simTime},
+        //     {"acc_x", robotData->lF_acc[0]},
+        //     {"acc_y", robotData->lF_acc[1]},
+        //     {"acc_z", robotData->lF_acc[2]},
+        //     {"rpy_x", robotData->lF_rpy[0]},
+        //     {"rpy_y", robotData->lF_rpy[1]},
+        //     {"rpy_z", robotData->lF_rpy[2]},
+        //     {"vel_z", robotData->lF_linear_vel[2]},
+        //     {"hip_joint_pos", robotData->hip_joint_pos},
+        //     {"knee_joint_pos", robotData->knee_joint_pos}
+        // };
         nlohmann::json contactMsg = {
             {"timestamp", robotData->simTime},
             {"is_contact", b_output},
@@ -474,15 +499,25 @@ int main() {
             {"knee_joint_normalized", inputData[3]},
             {"lF_accz_diff_normalized", inputData[4]}
         };
-        nlohmann::json debugMsg = {
+        nlohmann::json stableContactMsg = {
             {"timestamp", robotData->simTime},
-            {"DebugData1", debugData[0]},
-            {"DebugData2", debugData[1]},
-            {"DebugData3", debugData[2]},
-            {"DebugData4", debugData[3]},
-            {"DebugData5", debugData[4]},
-            {"DebugData6", debugData[5]}
+            {"stable_contact_probability", stable_contact_probability}
         };
+        nlohmann::json it2fisInputMsg = {
+            {"contact_probability", output},
+            {"h_disp_norm", h_disp_norm},
+            {"h_vel_norm", h_vel_norm},
+            {"ang_vel_norm", ang_vel_norm}
+        };
+        // nlohmann::json debugMsg = {
+        //     {"timestamp", robotData->simTime},
+        //     {"DebugData1", debugData[0]},
+        //     {"DebugData2", debugData[1]},
+        //     {"DebugData3", debugData[2]},
+        //     {"DebugData4", debugData[3]},
+        //     {"DebugData5", debugData[4]},
+        //     {"DebugData6", debugData[5]}
+        // };
 
 
 
@@ -494,18 +529,27 @@ int main() {
         server->broadcastMessage(channelIds[0], now, 
                                 reinterpret_cast<const uint8_t*>(contactStr.data()),
                                 contactStr.size());
-        std::string sensorStr = sensorMsg.dump();
-        server->broadcastMessage(channelIds[2], now, 
-                                reinterpret_cast<const uint8_t*>(sensorStr.data()),
-                                sensorStr.size());
+        
+        // std::string sensorStr = sensorMsg.dump();
+        // server->broadcastMessage(channelIds[2], now, 
+        //                         reinterpret_cast<const uint8_t*>(sensorStr.data()),
+        //                         sensorStr.size());
         std::string inputStr = inputMsg.dump();
         server->broadcastMessage(channelIds[1], now,
                                 reinterpret_cast<const uint8_t*>(inputStr.data()),
                                 inputStr.size()); 
-        std::string debugStr = debugMsg.dump();
+        std::string stableContactStr = stableContactMsg.dump();
+        server->broadcastMessage(channelIds[2], now,
+                                reinterpret_cast<const uint8_t*>(stableContactStr.data()),
+                                stableContactStr.size());
+        std::string it2fisInputStr = it2fisInputMsg.dump();
         server->broadcastMessage(channelIds[3], now,
-                                reinterpret_cast<const uint8_t*>(debugStr.data()),
-                                debugStr.size());        
+                                reinterpret_cast<const uint8_t*>(it2fisInputStr.data()),
+                                it2fisInputStr.size());
+        // std::string debugStr = debugMsg.dump();
+        // server->broadcastMessage(channelIds[3], now,
+        //                         reinterpret_cast<const uint8_t*>(debugStr.data()),
+        //                         debugStr.size());        
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
