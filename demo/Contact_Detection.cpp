@@ -361,7 +361,7 @@ int main() {
     bool b_contact_truth;
 
     // IT2FIS推理初始化
-    size_t window_size = 10;
+    size_t window_size = 100;
     StableContactDetector it2fis(window_size);
 
     while(running)
@@ -443,9 +443,9 @@ int main() {
         debugData[0] = stable_contact_probability;
         debugData[1] = ang_velocity;
         debugData[2] = h_displacement;
-        debugData[3] = h_vel_norm;
-        debugData[4] = ang_vel_norm;
-        debugData[5] = h_disp_norm;
+        debugData[3] = h_disp_norm;
+        debugData[4] = h_vel_norm;
+        debugData[5] = ang_vel_norm;
 
         // 创建并发布传感器数据消息
         nlohmann::json sensorMsg = {

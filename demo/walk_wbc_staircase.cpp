@@ -27,9 +27,11 @@ Feel free to use in any purpose, and cite OpenLoong-Dynamics-Control in any styl
 // 定义与主进程相同的共享内存结构
 struct SharedRobotData {
     double simTime;
+    double lF_pos[3];
     double lF_acc[3];
     double lF_rpy[3];
-    double lF_vel_z;
+    double lF_angular_vel[3];
+    double lF_linear_vel[3];
     double hip_joint_pos;
     double knee_joint_pos;
     double Contactforce;
@@ -47,7 +49,16 @@ SharedRobotData* setupSharedMemory() {
         perror("ftok failed");
         return nullptr;
     }
-    
+    // 检查是否存在旧的共享内存段，如果存在则移除
+    int existing_shmid = shmget(key, 0, 0666);
+    if (existing_shmid >= 0) {
+        std::cout << "发现已存在的共享内存段，正在移除..." << std::endl;
+        if (shmctl(existing_shmid, IPC_RMID, NULL) == -1) {
+            perror("移除共享内存段失败");
+        } else {
+            std::cout << "已成功移除旧共享内存段" << std::endl;
+        }
+    }
     size_t shm_size = sizeof(SharedRobotData);
     std::cout << "共享内存大小: " << shm_size << " 字节" << std::endl;
     std::cout << "共享内存键值: " << key << std::endl;
@@ -392,13 +403,21 @@ int main(int argc, const char** argv)
             // Sharememory update
             if (sharedData) {
                 sharedData->simTime = simTime;
+                sharedData->lF_pos[0] = RobotState.fLPos[0];
+                sharedData->lF_pos[1] = RobotState.fLPos[1];
+                sharedData->lF_pos[2] = RobotState.fLPos[2];
                 sharedData->lF_acc[0] = RobotState.fLAcc[0];
                 sharedData->lF_acc[1] = RobotState.fLAcc[1];
                 sharedData->lF_acc[2] = RobotState.fLAcc[2];
                 sharedData->lF_rpy[0] = RobotState.fLrpy[0];
                 sharedData->lF_rpy[1] = RobotState.fLrpy[1];
                 sharedData->lF_rpy[2] = RobotState.fLrpy[2];
-                sharedData->lF_vel_z = RobotState.fLLinVel[2];
+                sharedData->lF_angular_vel[0] = RobotState.fLAngVel[0];
+                sharedData->lF_angular_vel[1] = RobotState.fLAngVel[1];
+                sharedData->lF_angular_vel[2] = RobotState.fLAngVel[2];
+                sharedData->lF_linear_vel[0] = RobotState.fLLinVel[0];
+                sharedData->lF_linear_vel[1] = RobotState.fLLinVel[1];
+                sharedData->lF_linear_vel[2] = RobotState.fLLinVel[2];
                 sharedData->hip_joint_pos = RobotState.q(7);
                 sharedData->knee_joint_pos = RobotState.q(18);
                 sharedData->Contactforce = RobotState.fLtouch;

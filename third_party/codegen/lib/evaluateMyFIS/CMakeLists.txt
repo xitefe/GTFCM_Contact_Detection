@@ -55,7 +55,8 @@ add_library(evaluateMyFIS ${START_DIR}/codegen/lib/evaluateMyFIS/evaluateMyFIS_i
     ${START_DIR}/codegen/lib/evaluateMyFIS/evaluateMyFIS.cpp
     ${START_DIR}/codegen/lib/evaluateMyFIS/trimf.cpp
     ${START_DIR}/codegen/lib/evaluateMyFIS/evaluateAndMethod.cpp
-    ${START_DIR}/codegen/lib/evaluateMyFIS/centroid.cpp)
+    ${START_DIR}/codegen/lib/evaluateMyFIS/centroid.cpp
+    ${START_DIR}/codegen/lib/evaluateMyFIS/minOrMax.cpp)
 
 # Set properties for target "evaluateMyFIS".
 set_target_properties(evaluateMyFIS PROPERTIES PREFIX ""

@@ -2,13 +2,14 @@
 // File: evaluateMyFIS.cpp
 //
 // MATLAB Coder version            : 24.1
-// C/C++ source code generated on  : 2025-04-15 21:40:45
+// C/C++ source code generated on  : 2025-04-18 17:32:54
 //
 
 // Include Files
 #include "evaluateMyFIS.h"
 #include "centroid.h"
 #include "evaluateAndMethod.h"
+#include "minOrMax.h"
 #include "trimf.h"
 #include <algorithm>
 #include <cmath>
@@ -642,28 +643,40 @@ double evaluateMyFIS(const double x[4])
       0.72, 0.73, 0.74, 0.75, 0.76, 0.77, 0.78, 0.79, 0.8,  0.81, 0.82, 0.83,
       0.84, 0.85, 0.86, 0.87, 0.88, 0.89, 0.9,  0.91, 0.92, 0.93, 0.94, 0.95,
       0.96, 0.97, 0.98, 0.99, 1.0};
-  static const double dv10[3]{0.438336520076482, 1.0, 1.41666666666667};
-  static const double dv11[3]{0.55066921606118546, 1.0, 1.3333333333333361};
-  static const double dv12[3]{0.199330783938814, 0.7, 0.816667};
-  static const double dv13[3]{0.29946462715105115, 0.7, 0.7933336};
-  static const double dv14[3]{0.43546845124283, 1.0, 1.41667};
-  static const double dv15[3]{0.548374760994264, 1.0, 1.333336};
-  static const double dv16[3]{0.197418738049713, 0.700956022944551,
+  static const double dv1[3]{-0.416666666666667, 2.77555756156289E-17,
+                             0.302679658952497};
+  static const double dv10[3]{0.42481871387038872, 0.597442143727162,
+                              0.76991473812423838};
+  static const double dv11[3]{0.438336520076482, 1.0, 1.41666666666667};
+  static const double dv12[3]{0.55066921606118546, 1.0, 1.3333333333333361};
+  static const double dv13[3]{-0.414230946406821, 0.00243605359317906,
+                              0.19183922046285};
+  static const double dv14[3]{-0.330897546406821, 0.00243605359317906,
+                              0.069968489576897344};
+  static const double dv15[3]{0.174786845310597, 0.532886723507917, 0.816667};
+  static const double dv16[3]{0.25858708891595622, 0.532886723507917,
+                              0.75991094470158349};
+  static const double dv17[3]{0.532886723507917, 1.0, 1.41667};
+  static const double dv18[3]{0.62630937880633364, 1.0, 1.333336};
+  static const double dv19[3]{-0.416667, 0.0, 0.251522533495737};
+  static const double dv2[3]{-0.33333333333333365, 2.77555756156289E-17,
+                             0.15535108398450573};
+  static const double dv20[3]{-0.3333336, 0.0, 0.16467722289890385};
+  static const double dv21[3]{0.184531059683313, 0.700956022944551,
                               0.817623022944551};
-  static const double dv17[3]{0.29812619502868054, 0.700956022944551,
+  static const double dv22[3]{0.28781605233556051, 0.700956022944551,
                               0.79428962294455108};
-  static const double dv18[3]{0.583333, 1.0, 1.41667};
-  static const double dv19[3]{0.6666664, 1.0, 1.333336};
-  static const double dv2[3]{0.280592734225621, 0.7, 0.816667};
-  static const double dv3[3]{0.36447418738049675, 0.7, 0.7933336};
-  static const double dv4[3]{0.583333333333333, 1.0, 1.41666666666667};
-  static const double dv5[3]{0.66666666666666641, 1.0, 1.3333333333333361};
-  static const double dv6[3]{-0.416666666666667, 0.0, 0.339866156787763};
-  static const double dv7[3]{-0.33333333333333365, 0.0, 0.27189292543021043};
-  static const double dv8[3]{0.270076481835564, 0.700956022944551,
-                             0.817623022944551};
-  static const double dv9[3]{0.35625239005736137, 0.700956022944551,
-                             0.79428962294455108};
+  static const double dv23[3]{0.583333, 1.0, 1.41667};
+  static const double dv24[3]{0.6666664, 1.0, 1.333336};
+  static const double dv3[3]{0.177222898903776, 0.484165651644336, 0.816667};
+  static const double dv4[3]{0.32021924482338615, 0.484165651644336,
+                             0.68098260865477056};
+  static const double dv5[3]{0.696102314250914, 1.0, 1.41666666666667};
+  static const double dv6[3]{0.8395622818196522, 1.0, 1.3333333333333361};
+  static const double dv7[3]{-0.416666666666667, 0.0, 0.197929354445798};
+  static const double dv8[3]{-0.33333333333333365, 0.0, 0.10238433016228966};
+  static const double dv9[3]{0.186967113276492, 0.597442143727162,
+                             0.855663824604141};
   static const signed char iv[68]{
       1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 2, 2, 0, 0, 2,
       3, 0, 0, 1, 1, 3, 1, 1, 3, 3, 1, 0, 2, 0, 2, 0, 1, 0, 3, 0, 2, 3, 1,
@@ -679,68 +692,51 @@ double evaluateMyFIS(const double x[4])
   double mf[101];
   double umf[101];
   double w[34];
-  double dv1[24];
-  double dv[3];
+  double dv[24];
+  double b_orr[2];
   double aggVal;
   double d;
   double soln;
   double soln_tmp;
   double y;
-  int b_orr_tmp;
   int mfIndex;
-  int orr_tmp;
+  int ruleID;
+  int sampleID;
   std::memset(&irr[0], 0, 136U * sizeof(double));
-  dv[0] = -0.416666666666667;
-  dv[1] = 0.0;
-  dv[2] = 0.416666666666667;
-  dv1[0] = coder::fuzzy::internal::codegen::trimf(x[0], dv);
-  dv[0] = -0.33333333333333365;
-  dv[1] = 0.0;
-  dv[2] = 0.33333333333333365;
-  dv1[1] = coder::fuzzy::internal::codegen::trimf(x[0], dv);
-  dv1[2] = coder::fuzzy::internal::codegen::trimf(x[0], dv2);
-  dv1[3] = coder::fuzzy::internal::codegen::trimf(x[0], dv3);
-  dv1[4] = coder::fuzzy::internal::codegen::trimf(x[0], dv4);
-  dv1[5] = coder::fuzzy::internal::codegen::trimf(x[0], dv5);
-  dv1[6] = coder::fuzzy::internal::codegen::trimf(x[1], dv6);
-  dv1[7] = coder::fuzzy::internal::codegen::trimf(x[1], dv7);
-  dv1[8] = coder::fuzzy::internal::codegen::trimf(x[1], dv8);
-  dv1[9] = coder::fuzzy::internal::codegen::trimf(x[1], dv9);
-  dv1[10] = coder::fuzzy::internal::codegen::trimf(x[1], dv10);
-  dv1[11] = coder::fuzzy::internal::codegen::trimf(x[1], dv11);
-  dv[0] = -0.416667;
-  dv[1] = 0.0;
-  dv[2] = 0.416667;
-  dv1[12] = coder::fuzzy::internal::codegen::trimf(x[2], dv);
-  dv[0] = -0.3333336;
-  dv[1] = 0.0;
-  dv[2] = 0.3333336;
-  dv1[13] = coder::fuzzy::internal::codegen::trimf(x[2], dv);
-  dv1[14] = coder::fuzzy::internal::codegen::trimf(x[2], dv12);
-  dv1[15] = coder::fuzzy::internal::codegen::trimf(x[2], dv13);
-  dv1[16] = coder::fuzzy::internal::codegen::trimf(x[2], dv14);
-  dv1[17] = coder::fuzzy::internal::codegen::trimf(x[2], dv15);
-  dv[0] = -0.416667;
-  dv[1] = 0.0;
-  dv[2] = 0.416667;
-  dv1[18] = coder::fuzzy::internal::codegen::trimf(x[3], dv);
-  dv[0] = -0.3333336;
-  dv[1] = 0.0;
-  dv[2] = 0.3333336;
-  dv1[19] = coder::fuzzy::internal::codegen::trimf(x[3], dv);
-  dv1[20] = coder::fuzzy::internal::codegen::trimf(x[3], dv16);
-  dv1[21] = coder::fuzzy::internal::codegen::trimf(x[3], dv17);
-  dv1[22] = coder::fuzzy::internal::codegen::trimf(x[3], dv18);
-  dv1[23] = coder::fuzzy::internal::codegen::trimf(x[3], dv19);
-  for (int ruleID{0}; ruleID < 17; ruleID++) {
+  dv[0] = coder::fuzzy::internal::codegen::trimf(x[0], dv1);
+  dv[1] = coder::fuzzy::internal::codegen::trimf(x[0], dv2);
+  dv[2] = coder::fuzzy::internal::codegen::trimf(x[0], dv3);
+  dv[3] = coder::fuzzy::internal::codegen::trimf(x[0], dv4);
+  dv[4] = coder::fuzzy::internal::codegen::trimf(x[0], dv5);
+  dv[5] = coder::fuzzy::internal::codegen::trimf(x[0], dv6);
+  dv[6] = coder::fuzzy::internal::codegen::trimf(x[1], dv7);
+  dv[7] = coder::fuzzy::internal::codegen::trimf(x[1], dv8);
+  dv[8] = coder::fuzzy::internal::codegen::trimf(x[1], dv9);
+  dv[9] = coder::fuzzy::internal::codegen::trimf(x[1], dv10);
+  dv[10] = coder::fuzzy::internal::codegen::trimf(x[1], dv11);
+  dv[11] = coder::fuzzy::internal::codegen::trimf(x[1], dv12);
+  dv[12] = coder::fuzzy::internal::codegen::trimf(x[2], dv13);
+  dv[13] = coder::fuzzy::internal::codegen::trimf(x[2], dv14);
+  dv[14] = coder::fuzzy::internal::codegen::trimf(x[2], dv15);
+  dv[15] =
+      coder::fuzzy::internal::codegen::trimf(x[2], dv16) * 0.992537313432836;
+  dv[16] = coder::fuzzy::internal::codegen::trimf(x[2], dv17);
+  dv[17] = coder::fuzzy::internal::codegen::trimf(x[2], dv18);
+  dv[18] = coder::fuzzy::internal::codegen::trimf(x[3], dv19);
+  dv[19] = coder::fuzzy::internal::codegen::trimf(x[3], dv20);
+  dv[20] = coder::fuzzy::internal::codegen::trimf(x[3], dv21);
+  dv[21] = coder::fuzzy::internal::codegen::trimf(x[3], dv22);
+  dv[22] = coder::fuzzy::internal::codegen::trimf(x[3], dv23);
+  dv[23] = coder::fuzzy::internal::codegen::trimf(x[3], dv24);
+  for (ruleID = 0; ruleID < 17; ruleID++) {
     mfIndex = iv[ruleID];
     if (mfIndex == 0) {
       irr[ruleID] = 1.0;
       irr[ruleID + 68] = 1.0;
     } else {
       mfIndex = (mfIndex - 1) << 1;
-      irr[ruleID] = dv1[mfIndex];
-      irr[ruleID + 68] = dv1[mfIndex + 1];
+      irr[ruleID] = dv[mfIndex];
+      irr[ruleID + 68] = dv[mfIndex + 1];
     }
     mfIndex = iv[ruleID + 17];
     if (mfIndex == 0) {
@@ -748,8 +744,8 @@ double evaluateMyFIS(const double x[4])
       irr[ruleID + 85] = 1.0;
     } else {
       mfIndex = (mfIndex + 2) << 1;
-      irr[ruleID + 17] = dv1[mfIndex];
-      irr[ruleID + 85] = dv1[mfIndex + 1];
+      irr[ruleID + 17] = dv[mfIndex];
+      irr[ruleID + 85] = dv[mfIndex + 1];
     }
     mfIndex = iv[ruleID + 34];
     if (mfIndex == 0) {
@@ -757,8 +753,8 @@ double evaluateMyFIS(const double x[4])
       irr[ruleID + 102] = 1.0;
     } else {
       mfIndex = (mfIndex + 5) << 1;
-      irr[ruleID + 34] = dv1[mfIndex];
-      irr[ruleID + 102] = dv1[mfIndex + 1];
+      irr[ruleID + 34] = dv[mfIndex];
+      irr[ruleID + 102] = dv[mfIndex + 1];
     }
     mfIndex = iv[ruleID + 51];
     if (mfIndex == 0) {
@@ -766,14 +762,14 @@ double evaluateMyFIS(const double x[4])
       irr[ruleID + 119] = 1.0;
     } else {
       mfIndex = (mfIndex + 8) << 1;
-      irr[ruleID + 51] = dv1[mfIndex];
-      irr[ruleID + 119] = dv1[mfIndex + 1];
+      irr[ruleID + 51] = dv[mfIndex];
+      irr[ruleID + 119] = dv[mfIndex + 1];
     }
   }
   std::memset(&w[0], 0, 34U * sizeof(double));
   soln = 0.0;
   soln_tmp = 0.0;
-  for (int ruleID{0}; ruleID < 17; ruleID++) {
+  for (ruleID = 0; ruleID < 17; ruleID++) {
     double irrOfOneRule[8];
     irrOfOneRule[0] = irr[ruleID];
     irrOfOneRule[4] = irr[ruleID + 68];
@@ -783,55 +779,41 @@ double evaluateMyFIS(const double x[4])
     irrOfOneRule[6] = irr[ruleID + 102];
     irrOfOneRule[3] = irr[ruleID + 51];
     irrOfOneRule[7] = irr[ruleID + 119];
-    d = coder::fuzzy::internal::codegen::evaluateAndMethod(&irrOfOneRule[0]);
-    w[ruleID] = d;
     aggVal =
-        coder::fuzzy::internal::codegen::evaluateAndMethod(&irrOfOneRule[4]);
-    w[ruleID + 17] = aggVal;
-    soln += d;
-    soln_tmp += aggVal;
+        coder::fuzzy::internal::codegen::evaluateAndMethod(&irrOfOneRule[0]);
+    w[ruleID] = aggVal;
+    d = coder::fuzzy::internal::codegen::evaluateAndMethod(&irrOfOneRule[4]);
+    w[ruleID + 17] = d;
+    soln += aggVal;
+    soln_tmp += d;
   }
   std::memset(&orr[0], 0, 3434U * sizeof(double));
-  for (int ruleID{0}; ruleID < 17; ruleID++) {
+  for (ruleID = 0; ruleID < 17; ruleID++) {
     mfIndex = iv1[ruleID] - 1;
-    d = w[ruleID];
-    aggVal = w[ruleID + 17];
-    for (int sampleID{0}; sampleID < 101; sampleID++) {
-      double d1;
-      double d2;
-      d1 = outputMFCache[mfIndex + 3 * sampleID];
-      orr_tmp = sampleID + 101 * ruleID;
-      orr[orr_tmp] = d1;
-      d2 = outputMFCache[mfIndex + 3 * (sampleID + 101)];
-      b_orr_tmp = sampleID + 101 * (ruleID + 17);
-      orr[b_orr_tmp] = d2;
-      if (d1 > d) {
-        orr[orr_tmp] = w[ruleID];
-      } else {
-        orr[orr_tmp] = d1;
-      }
-      if (d2 > aggVal) {
-        orr[b_orr_tmp] = aggVal;
-      } else {
-        orr[b_orr_tmp] = d2;
-      }
+    aggVal = w[ruleID];
+    d = w[ruleID + 17];
+    for (sampleID = 0; sampleID < 101; sampleID++) {
+      b_orr[0] = outputMFCache[mfIndex + 3 * sampleID];
+      b_orr[1] = aggVal;
+      orr[sampleID + 101 * ruleID] = coder::internal::minimum(b_orr);
+      b_orr[0] = outputMFCache[mfIndex + 3 * (sampleID + 101)];
+      b_orr[1] = d;
+      orr[sampleID + 101 * (ruleID + 17)] = coder::internal::minimum(b_orr);
     }
   }
-  for (int sampleID{0}; sampleID < 101; sampleID++) {
+  for (sampleID = 0; sampleID < 101; sampleID++) {
     aggVal = orr[sampleID];
-    for (orr_tmp = 0; orr_tmp < 16; orr_tmp++) {
-      d = orr[sampleID + 101 * (orr_tmp + 1)];
-      if ((aggVal < d) || (std::isnan(aggVal) && (!std::isnan(d)))) {
-        aggVal = d;
-      }
+    for (ruleID = 0; ruleID < 16; ruleID++) {
+      b_orr[0] = aggVal;
+      b_orr[1] = orr[sampleID + 101 * (ruleID + 1)];
+      aggVal = coder::internal::maximum(b_orr);
     }
     arr[sampleID] = aggVal;
     aggVal = orr[sampleID + 1717];
-    for (orr_tmp = 0; orr_tmp < 16; orr_tmp++) {
-      d = orr[sampleID + 101 * (orr_tmp + 18)];
-      if ((aggVal < d) || (std::isnan(aggVal) && (!std::isnan(d)))) {
-        aggVal = d;
-      }
+    for (ruleID = 0; ruleID < 16; ruleID++) {
+      b_orr[0] = aggVal;
+      b_orr[1] = orr[sampleID + 101 * (ruleID + 18)];
+      aggVal = coder::internal::maximum(b_orr);
     }
     arr[sampleID + 101] = aggVal;
   }
@@ -848,34 +830,34 @@ double evaluateMyFIS(const double x[4])
     } else {
       std::copy(&arr[101], &arr[202], &lmf[0]);
       std::copy(&c_x[0], &c_x[101], &b_x[0]);
-      b_orr_tmp = 0;
+      sampleID = 0;
       for (mfIndex = 0; mfIndex < 101; mfIndex++) {
         if (umf[mfIndex] > 0.0) {
-          b_orr_tmp++;
-          if (mfIndex + 1 != b_orr_tmp) {
-            aggVal = b_x[b_orr_tmp - 1];
-            b_x[b_orr_tmp - 1] = b_x[mfIndex];
+          sampleID++;
+          if (mfIndex + 1 != sampleID) {
+            aggVal = b_x[sampleID - 1];
+            b_x[sampleID - 1] = b_x[mfIndex];
             b_x[mfIndex] = aggVal;
-            aggVal = umf[b_orr_tmp - 1];
-            umf[b_orr_tmp - 1] = umf[mfIndex];
+            aggVal = umf[sampleID - 1];
+            umf[sampleID - 1] = umf[mfIndex];
             umf[mfIndex] = aggVal;
-            aggVal = lmf[b_orr_tmp - 1];
-            lmf[b_orr_tmp - 1] = lmf[mfIndex];
+            aggVal = lmf[sampleID - 1];
+            lmf[sampleID - 1] = lmf[mfIndex];
             lmf[mfIndex] = aggVal;
           }
         }
       }
-      if (b_orr_tmp == 1) {
+      if (sampleID == 1) {
         soln = b_x[0];
         soln_tmp = b_x[0];
       } else {
         aggVal = 0.0;
-        for (mfIndex = 0; mfIndex < b_orr_tmp; mfIndex++) {
+        for (mfIndex = 0; mfIndex < sampleID; mfIndex++) {
           aggVal += lmf[mfIndex];
         }
         if (aggVal == 0.0) {
           soln = b_x[0];
-          soln_tmp = b_x[b_orr_tmp - 1];
+          soln_tmp = b_x[sampleID - 1];
         } else {
           boolean_T exitg1;
           boolean_T exitg2;
@@ -888,19 +870,19 @@ double evaluateMyFIS(const double x[4])
             _mm_storeu_pd(&mf[mfIndex], r);
             _mm_storeu_pd(&b_mf[mfIndex], r);
           }
-          d = (umf[100] + lmf[100]) * 0.5;
-          mf[100] = d;
-          b_mf[100] = d;
-          soln_tmp = coder::centroid(b_x, mf, b_orr_tmp);
+          aggVal = (umf[100] + lmf[100]) * 0.5;
+          mf[100] = aggVal;
+          b_mf[100] = aggVal;
+          soln_tmp = coder::centroid(b_x, mf, sampleID);
           soln = soln_tmp;
           aggVal = soln_tmp + 1.0;
-          orr_tmp = 0;
+          ruleID = 0;
           exitg1 = false;
           while ((!exitg1) && (soln != aggVal)) {
             mfIndex = 0;
             exitg2 = false;
-            while ((!exitg2) && (mfIndex <= b_orr_tmp - 2)) {
-              orr_tmp = mfIndex + 1;
+            while ((!exitg2) && (mfIndex <= sampleID - 2)) {
+              ruleID = mfIndex + 1;
               if ((soln >= b_x[mfIndex]) && (soln <= b_x[mfIndex + 1])) {
                 exitg2 = true;
               } else {
@@ -908,29 +890,29 @@ double evaluateMyFIS(const double x[4])
               }
             }
             aggVal = soln;
-            if (orr_tmp >= 1) {
-              std::copy(&umf[0], &umf[orr_tmp], &b_mf[0]);
+            if (ruleID >= 1) {
+              std::copy(&umf[0], &umf[ruleID], &b_mf[0]);
             }
-            mfIndex = orr_tmp + 1;
-            if (mfIndex <= b_orr_tmp) {
+            mfIndex = ruleID + 1;
+            if (mfIndex <= sampleID) {
               std::copy(&lmf[mfIndex + -1],
-                        &lmf[mfIndex + (b_orr_tmp - mfIndex)],
+                        &lmf[mfIndex + (sampleID - mfIndex)],
                         &b_mf[mfIndex + -1]);
             }
-            soln = coder::centroid(b_x, b_mf, b_orr_tmp);
+            soln = coder::centroid(b_x, b_mf, sampleID);
             if (soln > aggVal) {
               soln = aggVal;
               exitg1 = true;
             }
           }
           aggVal = soln_tmp + 1.0;
-          orr_tmp = 0;
+          ruleID = 0;
           exitg1 = false;
           while ((!exitg1) && (soln_tmp != aggVal)) {
             mfIndex = 0;
             exitg2 = false;
-            while ((!exitg2) && (mfIndex <= b_orr_tmp - 2)) {
-              orr_tmp = mfIndex + 1;
+            while ((!exitg2) && (mfIndex <= sampleID - 2)) {
+              ruleID = mfIndex + 1;
               if ((soln_tmp >= b_x[mfIndex]) &&
                   (soln_tmp <= b_x[mfIndex + 1])) {
                 exitg2 = true;
@@ -939,16 +921,16 @@ double evaluateMyFIS(const double x[4])
               }
             }
             aggVal = soln_tmp;
-            if (orr_tmp >= 1) {
-              std::copy(&lmf[0], &lmf[orr_tmp], &mf[0]);
+            if (ruleID >= 1) {
+              std::copy(&lmf[0], &lmf[ruleID], &mf[0]);
             }
-            mfIndex = orr_tmp + 1;
-            if (mfIndex <= b_orr_tmp) {
+            mfIndex = ruleID + 1;
+            if (mfIndex <= sampleID) {
               std::copy(&umf[mfIndex + -1],
-                        &umf[mfIndex + (b_orr_tmp - mfIndex)],
+                        &umf[mfIndex + (sampleID - mfIndex)],
                         &mf[mfIndex + -1]);
             }
-            soln_tmp = coder::centroid(b_x, mf, b_orr_tmp);
+            soln_tmp = coder::centroid(b_x, mf, sampleID);
             if (soln_tmp < aggVal) {
               soln_tmp = aggVal;
               exitg1 = true;
